@@ -1,0 +1,57 @@
+# Search engine for message history.
+#
+# Kept in its own compose file on purpose. The engine has a lifecycle of
+# its own: it is restarted, upgraded and occasionally rebuilt from
+# MongoDB without touching messaging, and it is meant to move onto its
+# own machine without anything else moving with it.
+#
+#   Development, same machine as the IM server:
+#     docker compose -f docker-compose.yaml -f docker-compose.search.yml up -d
+#     (the server reaches it at http://manticore:9308 over the openim network)
+#
+#   Production, its own machine:
+#     docker compose -f docker-compose.search.yml up -d
+#     then point engine.address in openim-search.yml at this machine's
+#     PRIVATE address and open the port to the IM server only.
+#
+# The index is not a source of truth and is never backed up: if this
+# machine is lost, run `openim-msgindexer backfill` against a fresh one.
+
+networks:
+  openim:
+    driver: bridge
+
+services:
+  manticore:
+    image: "${MANTICORE_IMAGE:-manticoresearch/manticore:29.9.0}"
+    container_name: manticore
+    restart: always
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      # Only the data. /etc/manticoresearch is deliberately NOT mounted:
+      # the image ships its own config there, and binding an empty host
+      # directory over it leaves the engine with no configuration at all.
+      - "${DATA_DIR:-./}/components/manticore/data:/var/lib/manticore"
+    ports:
+      # Bound to loopback so a development machine does not publish the
+      # engine to its network. On the production machine, replace with
+      # the private address of that host, e.g. "10.0.0.5:9308:9308", and
+      # let the firewall admit only the IM server.
+      #
+      # 9308 is the HTTP interface the server talks to. 9306 (MySQL) is
+      # deliberately not published: it is useful for hand-inspection, so
+      # reach it with `docker compose exec manticore mysql -P9306 -h0`.
+      - "127.0.0.1:9308:9308"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9308/cli?q=SHOW%20STATUS"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - openim
