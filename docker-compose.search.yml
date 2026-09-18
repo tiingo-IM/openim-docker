@@ -55,3 +55,33 @@ services:
       start_period: 20s
     networks:
       - openim
+
+
+# Trên máy Mac
+# scp /Users/thanhquy/Documents/openIM/openim-docker/docker-compose.search.yml \
+#     root@167.104.98.134:/home/root/server/
+
+# # Trên server
+# ssh root@167.104.98.134
+# cd /home/root/server
+# DATA_DIR=/home/root/server/data docker compose -f docker-compose.search.yml up -d
+# curl -fsS "http://127.0.0.1:9308/cli?q=SHOW%20STATUS" | head
+
+# sed -i 's/^enable: false/enable: true/' /home/root/server/configs/openim-search.yml
+# grep -n 'enable\|address' /home/root/server/configs/openim-search.yml
+# # address: http://127.0.0.1:9308  (đúng vì binary chạy trên host, port publish ra loopback)
+
+
+# cd /home/root/server
+# ./server-control.sh restart
+# ./server-control.sh status   # xác nhận openim-msgindexer đang chạy
+
+# cd /home/root/server/current
+
+# IMENV_LOG_ISSTDOUT=true nohup ./bin/openim-msgindexer backfill \
+#   -c /home/root/server/configs \
+#   --docs-per-second 50 \
+#   --progress-every 500 \
+#   > /home/root/server/logs/backfill.log 2>&1 &
+
+# tail -f /home/root/server/logs/backfill.log
