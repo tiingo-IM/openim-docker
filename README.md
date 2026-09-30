@@ -52,6 +52,25 @@ docker logs -f openim-server
 docker logs -f openim-chat
 ```
 
+## Upgrading the components (2026-09) ⬆️
+
+`.env` moved the components to: MongoDB 8.0.32, Redis 7.4.11, Kafka 3.9.2
+(the official `apache/kafka` image), etcd v3.5.34 (the official
+`quay.io/coreos/etcd` image) and MinIO from `pgsty/minio` (MinIO no longer
+publishes community images). A server that already runs the old ones:
+
+1. Back up first: `docker exec mongo mongodump --archive --gzip -u root -p <password> --authenticationDatabase admin > mongo.archive.gz`,
+   and copy `components/mnt` (MinIO) and `components/redis`.
+2. Stop openim-server and openim-chat, so nothing is left in Kafka.
+3. `docker compose pull && docker compose up -d`.
+4. MongoDB keeps its data but must be told it may use 8.0's features:
+   `docker exec mongo mongosh -u root -p <password> --authenticationDatabase admin --eval 'db.adminCommand({setFeatureCompatibilityVersion: "8.0", confirm: true})'`.
+   (It starts at 7.0's; going back to the 7.0 image is possible only before this step.)
+5. Kafka and etcd start empty: Kafka keeps its data in `components/kafka-data`
+   now (the old `components/kafka` can be removed once all is well); topics
+   are created again as messages flow. etcd holds only service discovery.
+6. Redis and MinIO keep their data as they are.
+
 ## Quick Experience ⚡
 
 For a quick experience with OpenIM services, please visit the [Quick Test Server Guide](https://docs.openim.io/guides/gettingStarted/quickTestServer).

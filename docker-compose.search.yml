@@ -48,7 +48,8 @@ services:
       # reach it with `docker compose exec manticore mysql -P9306 -h0`.
       - "127.0.0.1:9308:9308"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9308/cli?q=SHOW%20STATUS"]
+      # wget, not curl: the image has no curl.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9308/cli?q=SHOW%20STATUS"]
       interval: 30s
       timeout: 5s
       retries: 5
